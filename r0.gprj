@@ -1,0 +1,18 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW5AST-138B" pn="GW5AST-LV138FPG676AC1/I0">gw5ast138b-007</Device>
+    <FileList>
+        <File path="src/graphics.sv" type="file.verilog" enable="1"/>
+        <File path="src/hclk.sv" type="file.verilog" enable="1"/>
+        <File path="src/hvtx.sv" type="file.verilog" enable="1"/>
+        <File path="src/reaction.sv" type="file.verilog" enable="1"/>
+        <File path="src/top.sv" type="file.verilog" enable="1"/>
+        <File path="src/ui.sv" type="file.verilog" enable="1"/>
+        <File path="tmp/gowin_pll/gowin_pll.v" type="file.verilog" enable="1"/>
+        <File path="phy.cst" type="file.cst" enable="1"/>
+        <File path="src/dbg.rao" type="file.gao" enable="0"/>
+    </FileList>
+</Project>
