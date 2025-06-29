@@ -10,6 +10,13 @@ FPGA Digital Design challenge
 
 Target device: [Sipeed Tang Mega 138K Pro Dock](https://wiki.sipeed.com/hardware/en/tang/tang-mega-138k/mega-138k-pro.html)
 
+## Key concepts
+* No deep buffers or FIFOs
+* State update and clock domain crossing during the VSync period
+* ASCII font and color mapping
+* Double-Dabble number format conversion
+* UI update FSM
+
 ## TODOs
 * [ ] Self-compensation \
  Automatically measures and subtracts latency from the result
@@ -18,6 +25,8 @@ Target device: [Sipeed Tang Mega 138K Pro Dock](https://wiki.sipeed.com/hardware
 * [ ] Full HD
 * [ ] RISC-V core
 
-![img1](https://i.imgur.com/H6jQ0U6.jpeg)
-![img2](https://i.imgur.com/UFC4RDU.jpeg)
-![img2](https://i.imgur.com/TQIjK0l.jpeg)
+![img1](https://i.imgur.com/hQxPF07.jpeg)
+![img2](https://i.imgur.com/OwlEGOg.jpeg)
+
+### Video demonstration
+[![video](https://img.youtube.com/vi/Y8pYJHHqsCo/0.jpg)](https://www.youtube.com/watch?v=Y8pYJHHqsCo)
