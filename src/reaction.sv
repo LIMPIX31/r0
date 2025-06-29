@@ -47,6 +47,7 @@ module reaction #
                         cnt <= 'd0;
                         state <= LIT;
                     end else if (clicked) begin
+                        cnt <= 0;
                         state <= EARLY;
                     end else begin
                         cnt <= cnt + 28'd1;
@@ -58,6 +59,7 @@ module reaction #
                         cnt <= 0;
                         state <= VALID;
                     end else if (&cnt) begin
+                        cnt <= 0;
                         state <= LATE;
                     end else begin
                         cnt <= cnt + 28'd1;

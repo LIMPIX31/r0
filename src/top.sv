@@ -89,8 +89,7 @@ module top
     );
 
     state_transfer u_state
-    ( .i_uclk(i_clk_50m)
-    , .i_pclk(hdmi_pclk)
+    ( .i_clk(i_clk_50m)
     , .i_offscreen(offscreen)
     , .i_reaction_state(reaction_state)
     , .i_last_result(last_result)

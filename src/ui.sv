@@ -1,14 +1,21 @@
 package ui;
 
-    localparam bit [9:0] ADDR_BACKGROUND   = 10'h00; // 0
-    localparam bit [9:0] ADDR_LAST_RESULT  = 10'h01; // 10
-    localparam bit [9:0] ADDR_BEST_RESULT  = 10'h0b; // 10
-    localparam bit [9:0] ADDR_STATUS_LABEL = 10'h15; // 18
-    localparam bit [9:0] ADDR_DBG_RND      = 10'h27; // 1
+    localparam bit [9:0] ADDR_ZERO         = 10'h00;
+    localparam bit [9:0] ADDR_BACKGROUND   = ADDR_ZERO         + 10'h00; // 1
+    localparam bit [9:0] ADDR_LABEL_LAST   = ADDR_BACKGROUND   + 10'h01; // 6
+    localparam bit [9:0] ADDR_LAST_RESULT  = ADDR_LABEL_LAST   + 10'h06; // 13
+    localparam bit [9:0] ADDR_LABEL_BEST   = ADDR_LAST_RESULT  + 10'h0D; // 6
+    localparam bit [9:0] ADDR_BEST_RESULT  = ADDR_LABEL_BEST   + 10'h06; // 13
+    localparam bit [9:0] ADDR_STATUS_LABEL = ADDR_BEST_RESULT  + 10'h0D; // 18
+    localparam bit [9:0] ADDR_LABEL_PRNG   = ADDR_STATUS_LABEL + 10'h12; // 6
+    localparam bit [9:0] ADDR_DBG_RND      = ADDR_LABEL_PRNG   + 10'h06; // 1
+    localparam bit [9:0] ADDR_UNITS        = ADDR_DBG_RND      + 10'h01; // 19
+    localparam bit [9:0] ADDR_AUTHOR       = ADDR_UNITS        + 10'h13; // 17
 
 endpackage : ui
 
 module state_ram
+    import ui::*;
 ( input logic i_wclk
 , input logic i_rclk
 , input logic i_we
@@ -38,8 +45,7 @@ endmodule : state_ram
 
 module state_transfer
     import ui::*;
-( input logic i_uclk
-, input logic i_pclk
+( input logic i_clk
 , input logic i_offscreen
 
 , input logic [2:0]  i_reaction_state
@@ -55,6 +61,7 @@ module state_transfer
     typedef logic [7:0] label_t [18];
 
     localparam logic [7:0] XF6 = 8'hf6;
+    localparam logic [7:0] ASCII_PERIOD = 8'h2e;
 
     localparam label_t LABEL_PRESS_TO_START = "Press G16 to start";
     localparam label_t LABEL_WAIT           = "Wait green        ";
@@ -65,6 +72,12 @@ module state_transfer
                                                XF6,XF6,XF6,XF6,XF6,
                                                XF6,XF6,XF6,XF6,XF6,
                                                XF6,XF6,XF6};
+
+    localparam logic [7:0] LABEL_LAST   [6]  = "Last: ";
+    localparam logic [7:0] LABEL_BEST   [6]  = "Best: ";
+    localparam logic [7:0] LABEL_PRNG   [6]  = "PRNG: ";
+    localparam logic [7:0] LABEL_UNITS  [19] = "     s ms  \xbbs  ns ";
+    localparam logic [7:0] LABEL_AUTHOR [17] = "Author: @limpix31";
 
     logic en_sync, en, en_d;
     logic bcd_load, bcd_valid_last, bcd_valid_best;
@@ -81,21 +94,56 @@ module state_transfer
     logic [3:0] bcd_last [9];
     logic [3:0] bcd_best [9];
 
+    logic [7:0] last_display [13];
+    logic [7:0] best_display [13];
+
     logic [7:0] status_label [18];
 
     enum logic [3:0]
     { INIT
     , BACKGROUND
     , WAIT_BCD
+    , LAST_LABEL
     , LAST_RESULT
+    , BEST_LABEL
     , BEST_RESULT
-    , LABEL
+    , UNITS
+    , STATUS_LABEL
+    , PRNG_LABEL
     , DBG_RND
+    , AUTHOR
     , DONE
     } state;
 
     assign bcd_valid   = bcd_valid_last & bcd_valid_best;
     assign label_color = lit ? {4'h0, lit_color} : {4'hf, 4'h0};
+
+    function static logic [7:0] to_ascii (logic [3:0] x);
+        to_ascii = 8'h30 + 8'(x);
+    endfunction
+
+    typedef logic [7:0] result_display_t [13];
+
+    function static result_display_t bcd_display (logic [3:0] bcd [9]);
+        bcd_display[0]  = to_ascii(bcd[8]);
+        bcd_display[1]  = ASCII_PERIOD;
+        bcd_display[2]  = to_ascii(bcd[7]);
+        bcd_display[3]  = to_ascii(bcd[6]);
+        bcd_display[4]  = to_ascii(bcd[5]);
+        bcd_display[5]  = ASCII_PERIOD;
+        bcd_display[6]  = to_ascii(bcd[4]);
+        bcd_display[7]  = to_ascii(bcd[3]);
+        bcd_display[8]  = to_ascii(bcd[2]);
+        bcd_display[9]  = ASCII_PERIOD;
+        bcd_display[10] = to_ascii(bcd[1]);
+        bcd_display[11] = to_ascii(bcd[0]);
+        bcd_display[12] = to_ascii(0);
+    endfunction
+
+    always_comb begin
+        last_display = bcd_display(bcd_last);
+        best_display = bcd_display(bcd_best);
+    end
 
     always_comb begin
         case (reaction_state)
@@ -108,13 +156,13 @@ module state_transfer
         endcase
     end
 
-    always_ff @(posedge i_uclk) begin
+    always_ff @(posedge i_clk) begin
         en_sync <= i_offscreen;
         en <= en_sync;
         en_d <= en;
     end
 
-    always_ff @(posedge i_uclk) begin
+    always_ff @(posedge i_clk) begin
         if (en_d & ~en) begin
             state <= INIT;
         end else begin
@@ -153,49 +201,91 @@ module state_transfer
                 end
                 WAIT_BCD: if (bcd_valid) begin
                     addr_cnt <= 0;
-                    state <= LAST_RESULT;
+                    state <= LAST_LABEL;
+                end
+                LAST_LABEL: begin
+                    o_sr_waddr <= ADDR_LABEL_LAST + 10'(addr_cnt);
+                    o_sr_din   <= {LABEL_LAST[addr_cnt], label_color};
+
+                    if (addr_cnt == 8'd5) begin
+                        addr_cnt <= 0;
+                        state    <= LAST_RESULT;
+                    end else begin
+                        addr_cnt <= addr_cnt + 8'd1;
+                    end
                 end
                 LAST_RESULT: begin
-                    o_sr_waddr <= ADDR_LAST_RESULT + addr_cnt;
+                    o_sr_waddr <= ADDR_LAST_RESULT + 10'(addr_cnt);
+                    o_sr_din <= {
+                        last_untracked
+                            ? 8'hf6
+                            : last_display[addr_cnt],
+                        label_color
+                    };
 
-                    if (addr_cnt == 8'd9) begin
-                        o_sr_din <= {8'hbb, label_color};
+                    if (addr_cnt == 8'd12) begin
                         addr_cnt <= 0;
-                        state <= BEST_RESULT;
+                        state <= BEST_LABEL;
                     end else begin
-                        o_sr_din <= {
-                            last_untracked
-                                ? 8'hf6
-                                : 8'h30 + bcd_last[8'd9 - addr_cnt],
-                            label_color
-                        };
+                        addr_cnt <= addr_cnt + 8'd1;
+                    end
+                end
+                BEST_LABEL: begin
+                    o_sr_waddr <= ADDR_LABEL_BEST + 10'(addr_cnt);
+                    o_sr_din   <= {LABEL_BEST[addr_cnt], label_color};
+
+                    if (addr_cnt == 8'd5) begin
+                        addr_cnt <= 0;
+                        state    <= BEST_RESULT;
+                    end else begin
                         addr_cnt <= addr_cnt + 8'd1;
                     end
                 end
                 BEST_RESULT: begin
-                    o_sr_waddr <= ADDR_BEST_RESULT + addr_cnt;
+                    o_sr_waddr <= ADDR_BEST_RESULT + 10'(addr_cnt);
+                    o_sr_din <= {
+                        best_untracked
+                            ? 8'hf6
+                            : best_display[addr_cnt],
+                        label_color
+                    };
 
-                    if (addr_cnt == 8'd9) begin
-                        o_sr_din <= {8'hbb, label_color};
+                    if (addr_cnt == 8'd12) begin
                         addr_cnt <= 0;
-                        state <= LABEL;
+                        state    <= UNITS;
                     end else begin
-                        o_sr_din <= {
-                            best_untracked
-                                ? 8'hf6
-                                : 8'h30 + bcd_best[8'd9 - addr_cnt],
-                            label_color
-                        };
                         addr_cnt <= addr_cnt + 8'd1;
                     end
                 end
-                LABEL: begin
-                    o_sr_waddr <= ADDR_STATUS_LABEL + addr_cnt;
+                UNITS: begin
+                    o_sr_waddr <= ADDR_UNITS + 10'(addr_cnt);
+                    o_sr_din  <= {LABEL_UNITS[addr_cnt], label_color};
+
+                    if (addr_cnt == 8'd18) begin
+                        addr_cnt <= 0;
+                        state    <= STATUS_LABEL;
+                    end else begin
+                        addr_cnt <= addr_cnt + 8'd1;
+                    end
+                end
+                STATUS_LABEL: begin
+                    o_sr_waddr <= ADDR_STATUS_LABEL + 10'(addr_cnt);
                     o_sr_din <= {status_label[addr_cnt], label_color};
 
                     if (addr_cnt == 8'd17) begin
                         addr_cnt <= 0;
-                        state <= DBG_RND;
+                        state <= PRNG_LABEL;
+                    end else begin
+                        addr_cnt <= addr_cnt + 8'd1;
+                    end
+                end
+                PRNG_LABEL: begin
+                    o_sr_waddr <= ADDR_LABEL_PRNG + 10'(addr_cnt);
+                    o_sr_din   <= {LABEL_PRNG[addr_cnt], label_color};
+
+                    if (addr_cnt == 8'd5) begin
+                        addr_cnt <= 0;
+                        state    <= DBG_RND;
                     end else begin
                         addr_cnt <= addr_cnt + 8'd1;
                     end
@@ -203,7 +293,21 @@ module state_transfer
                 DBG_RND: begin
                     o_sr_waddr <= ADDR_DBG_RND;
                     o_sr_din   <= i_dbg_rnd;
-                    state      <= DONE;
+                    state      <= AUTHOR;
+                end
+                AUTHOR: begin
+                    o_sr_waddr <= ADDR_AUTHOR + 10'(addr_cnt);
+
+                    if (addr_cnt == 8'd17) begin
+                        addr_cnt <= 0;
+                        state    <= DONE;
+                    end else if (addr_cnt > 8'd8) begin
+                        o_sr_din <= {LABEL_AUTHOR[addr_cnt], lit ? {4'h0, lit_color} : {4'(addr_cnt) - 4'd8, 4'h0}};
+                        addr_cnt <= addr_cnt + 8'd1;
+                    end else begin
+                        o_sr_din <= {LABEL_AUTHOR[addr_cnt], label_color};
+                        addr_cnt <= addr_cnt + 8'd1;
+                    end
                 end
                 DONE: begin
                     o_sr_we <= 1'b0;
@@ -218,7 +322,7 @@ module state_transfer
     bin_to_bcd #
     ( .WIDTH(29)
     ) u_bcd_last
-    ( .i_clk(i_uclk)
+    ( .i_clk(i_clk)
     , .i_load(bcd_load)
     , .o_valid(bcd_valid_last)
     , .i_bin({i_last_result, 1'b0})
@@ -228,7 +332,7 @@ module state_transfer
     bin_to_bcd #
     ( .WIDTH(29)
     ) u_bcd_best
-    ( .i_clk(i_uclk)
+    ( .i_clk(i_clk)
     , .i_load(bcd_load)
     , .o_valid(bcd_valid_best)
     , .i_bin({i_best_result, 1'b0})
@@ -248,12 +352,16 @@ module ui_layout
     always_comb begin
         if (i_by == 9'd20 && i_bx >= 9'd40 && i_bx < 9'd58) begin
             o_addr = ADDR_STATUS_LABEL + 10'(i_bx - 9'd40);
-        end else if (i_by == 9'd25 && i_bx >= 9'd40 && i_bx < 9'd50) begin
-            o_addr = ADDR_LAST_RESULT + 10'(i_bx - 9'd40);
-        end else if (i_by == 9'd26 && i_bx >= 9'd40 && i_bx < 9'd50) begin
-            o_addr = ADDR_BEST_RESULT + 10'(i_bx - 9'd40);
-        end else if (i_by == 9'd50 && i_bx == 9'd40) begin
-            o_addr = ADDR_DBG_RND;
+        end else if (i_by == 9'd25 && i_bx >= 9'd40 && i_bx < 9'd59) begin
+            o_addr = ADDR_LABEL_LAST + 10'(i_bx - 9'd40);
+        end else if (i_by == 9'd26 && i_bx >= 9'd40 && i_bx < 9'd59) begin
+            o_addr = ADDR_LABEL_BEST + 10'(i_bx - 9'd40);
+        end else if (i_by == 9'd27 && i_bx >= 9'd40 && i_bx < 9'd59) begin
+            o_addr = ADDR_UNITS + 10'(i_bx - 9'd40);
+        end else if (i_by == 9'd50 && i_bx >= 9'd40 && i_bx < 9'd47) begin
+            o_addr = ADDR_LABEL_PRNG + 10'(i_bx - 9'd40);
+        end else if (i_by == 9'd52 && i_bx >= 9'd40 && i_bx < 9'd57) begin
+            o_addr = ADDR_AUTHOR + 10'(i_bx - 9'd40);
         end else begin
             o_addr = ADDR_BACKGROUND;
         end
