@@ -22,7 +22,7 @@ Target device: [Sipeed Tang Mega 138K Pro Dock](https://wiki.sipeed.com/hardware
  Automatically measures and subtracts latency from the result
 * [ ] Dark/Light theme switch
 * [ ] TRNG instead of PRNG
-* [ ] Full HD
+* [x] Full HD
 * [ ] RISC-V core
 
 ![img1](https://i.imgur.com/hQxPF07.jpeg)

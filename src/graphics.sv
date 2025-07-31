@@ -1,105 +1,137 @@
 module timing_source #
-( parameter int FRAME_WIDTH   = 1650
-, parameter int FRAME_HEIGHT  = 750
-, parameter int ACTIVE_HEIGHT = 720
+( parameter int unsigned FRAME_WIDTH   = 2200
+, parameter int unsigned FRAME_HEIGHT  = 1125
+, parameter int unsigned ACTIVE_HEIGHT = 1080
 )
-( input  logic i_pclk
-, input  logic i_rst
+( input  var logic i_pclk
+, input  var logic i_rst
 
-, output logic [11:0] o_px
-, output logic [11:0] o_py
-, output logic [8:0]  o_bx
-, output logic [8:0]  o_by
+, output var logic [11:0] o_px
+, output var logic [11:0] o_py
+, output var logic [8:0]  o_bx
+, output var logic [8:0]  o_by
 
-, output logic o_offscreen
+, output var logic o_offscreen
 );
 
-    logic [11:0] x, y;
-
-    assign o_px = x;
-    assign o_py = y;
-
-    assign o_bx = x[11:3];
-    assign o_by = y[11:3];
-
-    assign o_offscreen = y >= ACTIVE_HEIGHT;
+    var logic [11:0] x, y;
 
     always_ff @(posedge i_pclk) begin
         if (i_rst) begin
-            x <= 'd0;
-            y <= 'd0;
+            {x, y} <= 0;
         end else begin
             x <= x == FRAME_WIDTH - 1 ? 12'd0 : x + 12'd1;
             y <= x == FRAME_WIDTH - 1 ? (y == FRAME_HEIGHT - 1 ? 12'd0 : y + 12'd1) : y;
+
+            o_px <= x;
+            o_py <= y;
+
+            o_bx <= x[11:3];
+            o_by <= y[11:3];
+
+            o_offscreen <= y >= ACTIVE_HEIGHT;
         end
     end
 
 endmodule : timing_source
 
 module renderer
-( input logic i_pclk
+( input  var logic i_pclk
 
-, input  logic [15:0] i_char
-, input  logic [11:0] i_x
-, input  logic [11:0] i_y
+, input  var logic [15:0] i_char
+, input  var logic [11:0] i_x
+, input  var logic [11:0] i_y
 
-, output logic o_hs
-, output logic o_vs
-, output logic o_de
+, output var logic o_hs
+, output var logic o_vs
+, output var logic o_de
 
-, output logic [23:0] o_video
+, output var logic [23:0] o_video
 );
 
-    logic [7:0]  ascii;
-    logic [3:0]  fg_code, bg_code;
-    logic [23:0] fg_true, bg_true;
-    logic [63:0] bitmap;
-    logic [2:0]  cx;
-    logic [5:0]  cy;
-    logic [11:0] x_d, y_d;
+    // Stage 0
 
-    assign ascii   = i_char[15:8];
-    assign fg_code = i_char[7:4];
-    assign bg_code = i_char[3:0];
-
-    assign cx = (3'd7 - i_x[2:0]);
-    assign cy = (3'd7 - i_y[2:0]) << 3;
+    var logic [7:0]  ascii_0;
+    var logic [3:0]  fg_code_0, bg_code_0;
+    var logic [11:0] x_0, y_0;
 
     always_ff @(posedge i_pclk) begin
-        o_video <= bitmap[cy+cx] == 1'b1 ? fg_true : bg_true;
+        ascii_0   <= i_char[15:8];
+        fg_code_0 <= i_char[7:4];
+        bg_code_0 <= i_char[3:0];
 
-        x_d <= i_x;
-        y_d <= i_y;
+        x_0 <= i_x;
+        y_0 <= i_y;
     end
 
+    // Stage 1
+
+    var logic [7:0]  ascii_1;
+    var logic [3:0]  fg_code_1, bg_code_1;
+    var logic [11:0] x_1, y_1;
+
+    var logic [2:0] cx_1;
+    var logic [5:0] cy_1;
+
+    always_ff @(posedge i_pclk) begin
+        cx_1 <= (3'd7 - x_0[2:0]);
+        cy_1 <= (3'd7 - y_0[2:0]) << 3;
+
+        ascii_1   <= ascii_0;
+        fg_code_1 <= fg_code_0;
+        bg_code_1 <= bg_code_0;
+
+        x_1 <= x_0;
+        y_1 <= y_0;
+    end
+
+    // Stage 2
+
+    var logic [23:0] fg_true_2, bg_true_2;
+    var logic [63:0] bitmap_2;
+    var logic [6:0]  bitpos_2;
+
     font u_font
-    ( .i_ascii(ascii)
-    , .o_bitmap(bitmap)
+    ( .i_clk(i_pclk)
+    , .i_ascii(ascii_1)
+    , .o_bitmap(bitmap_2)
     );
 
     color_lut u_fg_color
-    ( .i_code(fg_code)
-    , .o_color(fg_true)
+    ( .i_clk(i_pclk)
+    , .i_code(fg_code_1)
+    , .o_color(fg_true_2)
     );
 
     color_lut u_bg_color
-    ( .i_code(bg_code)
-    , .o_color(bg_true)
+    ( .i_clk(i_pclk)
+    , .i_code(bg_code_1)
+    , .o_color(bg_true_2)
     );
 
+    always_ff @(posedge i_pclk) begin
+        bitpos_2 <= cy_1 + cx_1;
+    end
+
+    // Stage 3
+
+    always_ff @(posedge i_pclk) begin
+        o_video <= bitmap_2[bitpos_2] == 1'b1 ? fg_true_2 : bg_true_2;
+    end
+
     hvtx_sync #
-    ( .FRAME_WIDTH(1650)
-    , .FRAME_HEIGHT(750)
-    , .ACTIVE_WIDTH(1280)
-    , .ACTIVE_HEIGHT(720)
-    , .H_PORCH(110)
-    , .H_SYNC(40)
-    , .V_PORCH(5)
+    ( .FRAME_WIDTH(2200)
+    , .FRAME_HEIGHT(1125)
+    , .ACTIVE_WIDTH(1920)
+    , .ACTIVE_HEIGHT(1080)
+    , .H_PORCH(88)
+    , .H_SYNC(44)
+    , .V_PORCH(4)
     , .V_SYNC(5)
     ) u_sync
     ( .i_clk(i_pclk)
-    , .i_x(x_d)
-    , .i_y(y_d)
+    , .i_x(x_1)
+    , .i_y(y_1)
     , .o_hs(o_hs)
     , .o_vs(o_vs)
     , .o_de(o_de)
@@ -108,13 +140,15 @@ module renderer
 endmodule : renderer
 
 module font
-( input  logic [7:0]  i_ascii
-, output logic [63:0] o_bitmap
+( input  var logic        i_clk
+, input  var logic [7:0]  i_ascii
+, output var logic [63:0] o_bitmap
 );
 
     logic [63:0] rom [256];
 
-    assign o_bitmap = rom[i_ascii];
+    always_ff @(posedge i_clk)
+        o_bitmap <= rom[i_ascii];
 
     initial begin
         $readmemh("rom/font.hex", rom);
@@ -140,8 +174,9 @@ module color_lut #
 , parameter bit [23:0] XE = 24'h74C3E4
 , parameter bit [23:0] XF = 24'hC0C0C0
 )
-( input  logic [3:0]  i_code
-, output logic [23:0] o_color
+( input  var logic        i_clk
+, input  var logic [3:0]  i_code
+, output var logic [23:0] o_color
 );
 
     logic [23:0] true_colors [16];
@@ -165,6 +200,7 @@ module color_lut #
         true_colors[15] = XF;
     end
 
-    assign o_color = true_colors[i_code];
+    always_ff @(posedge i_clk)
+        o_color <= true_colors[i_code];
 
 endmodule : color_lut

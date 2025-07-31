@@ -1,8 +1,8 @@
 module hclk
-( input  logic i_clk_50m
-, output logic o_lock
-, output logic o_sclk
-, output logic o_pclk
+( input  var logic i_clk_50m
+, output var logic o_lock
+, output var logic o_sclk
+, output var logic o_pclk
 );
 
     logic pclk, sclk, lock;
@@ -17,14 +17,14 @@ module hclk
     ( .FCLKIN("50")
     , .IDIV_SEL(1)
     , .FBDIV_SEL(1)
-    , .ODIV0_SEL(5)
+    , .ODIV0_SEL(2)
     , .ODIV1_SEL(8)
     , .ODIV2_SEL(8)
     , .ODIV3_SEL(8)
     , .ODIV4_SEL(8)
     , .ODIV5_SEL(8)
     , .ODIV6_SEL(8)
-    , .MDIV_SEL(37)
+    , .MDIV_SEL(30)
     , .MDIV_FRAC_SEL(0)
     , .ODIV0_FRAC_SEL(0)
     , .CLKOUT0_EN("TRUE")

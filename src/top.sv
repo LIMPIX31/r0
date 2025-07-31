@@ -118,8 +118,8 @@ module top
     );
 
     hvtx_mod u_mod
-    ( .i_pixel_clk(hdmi_pclk)
-    , .i_serial_clk(hdmi_sclk)
+    ( .i_pclk(hdmi_pclk)
+    , .i_sclk(hdmi_sclk)
     , .i_hs(hs)
     , .i_vs(vs)
     , .i_de(de)
@@ -127,9 +127,9 @@ module top
     , .o_chan_vec(chan_vec)
     );
 
-    hvtx_ser u_ser_a
-    ( .i_pixel_clk(hdmi_pclk)
-    , .i_serial_clk(hdmi_sclk)
+    hvtx_ser u_ser
+    ( .i_pclk(hdmi_pclk)
+    , .i_sclk(hdmi_sclk)
     , .i_rst(~i_rst_n)
     , .i_chan_vec(chan_vec)
     , .o_hdmi_clk_p(o_hdmi_clk_p)
