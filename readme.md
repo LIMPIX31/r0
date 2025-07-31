@@ -21,7 +21,7 @@ Target device: [Sipeed Tang Mega 138K Pro Dock](https://wiki.sipeed.com/hardware
 * [ ] Self-compensation \
  Automatically measures and subtracts latency from the result
 * [ ] Dark/Light theme switch
-* [ ] TRNG instead of PRNG
+* [x] TRNG instead of PRNG
 * [x] Full HD
 * [ ] RISC-V core
 

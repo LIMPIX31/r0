@@ -80,41 +80,12 @@ module reaction #
     end
 
     debounce u_debounce
-    ( .clk(i_clk_50m)
-    , .i(~i_btn_n)
-    , .o(clicked)
-    );
+    (i_clk_50m, ~i_btn_n, clicked);
 
-    prng u_prng
-    ( .i_clk(i_clk_50m)
-    , .i_rst(i_rst)
-    , .o_rnd(rnd)
-    );
+    trng #(16) u_trng
+    (i_clk_50m, rnd);
 
 endmodule : reaction
-
-module prng
-( input  logic i_clk
-, input  logic i_rst
-
-, output logic [15:0] o_rnd
-);
-
-    logic [15:0] rnd;
-    logic feedback;
-
-    assign o_rnd = rnd;
-    assign feedback = rnd[15] ^ rnd[13] ^ rnd[12] ^ rnd[10];
-
-    always @(posedge i_clk) begin
-        if (i_rst) begin
-            rnd <= 16'hDEAD;
-        end else begin
-            rnd <= {rnd[14:0], feedback};
-        end
-    end
-
-endmodule
 
 module debounce
 ( input  logic clk

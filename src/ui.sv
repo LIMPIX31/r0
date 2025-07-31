@@ -75,7 +75,7 @@ module state_transfer
 
     localparam logic [7:0] LABEL_LAST   [6]  = "Last: ";
     localparam logic [7:0] LABEL_BEST   [6]  = "Best: ";
-    localparam logic [7:0] LABEL_PRNG   [6]  = "PRNG: ";
+    localparam logic [7:0] LABEL_PRNG   [6]  = "TRNG: ";
     localparam logic [7:0] LABEL_UNITS  [19] = "     s ms  \xbbs  ns ";
     localparam logic [7:0] LABEL_AUTHOR [17] = "Author: @limpix31";
 

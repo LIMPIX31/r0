@@ -87,9 +87,11 @@ module renderer
 
     // Stage 2
 
-    var logic [23:0] fg_true_2, bg_true_2;
+    var logic [3:0]  fg_code_2, bg_code_2;
+    var logic [7:0]  ascii_2;
     var logic [63:0] bitmap_2;
     var logic [6:0]  bitpos_2;
+    var logic [11:0] x_2, y_2;
 
     font u_font
     ( .i_clk(i_pclk)
@@ -97,26 +99,41 @@ module renderer
     , .o_bitmap(bitmap_2)
     );
 
+    always_ff @(posedge i_pclk) begin
+        bitpos_2 <= cy_1 + cx_1;
+
+        fg_code_2 <= fg_code_1;
+        bg_code_2 <= bg_code_1;
+
+        x_2 <= x_1;
+        y_2 <= y_1;
+    end
+
+    // Stage 3
+
+    var logic [23:0] fg_true_3, bg_true_3;
+    var logic bit_3;
+
     color_lut u_fg_color
     ( .i_clk(i_pclk)
-    , .i_code(fg_code_1)
-    , .o_color(fg_true_2)
+    , .i_code(fg_code_2)
+    , .o_color(fg_true_3)
     );
 
     color_lut u_bg_color
     ( .i_clk(i_pclk)
-    , .i_code(bg_code_1)
-    , .o_color(bg_true_2)
+    , .i_code(bg_code_2)
+    , .o_color(bg_true_3)
     );
 
     always_ff @(posedge i_pclk) begin
-        bitpos_2 <= cy_1 + cx_1;
+        bit_3 <=  bitmap_2[bitpos_2];
     end
 
     // Stage 3
 
     always_ff @(posedge i_pclk) begin
-        o_video <= bitmap_2[bitpos_2] == 1'b1 ? fg_true_2 : bg_true_2;
+        o_video <= bit_3 == 1 ? fg_true_3 : bg_true_3;
     end
 
     hvtx_sync #
@@ -130,8 +147,8 @@ module renderer
     , .V_SYNC(5)
     ) u_sync
     ( .i_clk(i_pclk)
-    , .i_x(x_1)
-    , .i_y(y_1)
+    , .i_x(x_2)
+    , .i_y(y_2)
     , .o_hs(o_hs)
     , .o_vs(o_vs)
     , .o_de(o_de)
